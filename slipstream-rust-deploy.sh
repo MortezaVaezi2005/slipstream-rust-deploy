@@ -226,6 +226,25 @@ uninstall_slipstream() {
         userdel "$SLIPSTREAM_USER" 2>/dev/null || true
     fi
 
+    # Stop and disable iptables restore service
+    if systemctl is-active --quiet slipstream-restore-iptables 2>/dev/null; then
+        print_status "Stopping slipstream-restore-iptables service..."
+        systemctl stop slipstream-restore-iptables
+    fi
+    if systemctl is-enabled --quiet slipstream-restore-iptables 2>/dev/null; then
+        print_status "Disabling slipstream-restore-iptables service..."
+        systemctl disable slipstream-restore-iptables
+    fi
+    if [ -f "${SYSTEMD_DIR}/slipstream-restore-iptables.service" ]; then
+        print_status "Removing iptables restore service..."
+        rm -f "${SYSTEMD_DIR}/slipstream-restore-iptables.service"
+        systemctl daemon-reload
+    fi
+    if [ -f "/usr/local/bin/slipstream-restore-iptables.sh" ]; then
+        print_status "Removing iptables restore script..."
+        rm -f "/usr/local/bin/slipstream-restore-iptables.sh"
+    fi
+
     # Remove iptables rules (best effort)
     print_status "Removing iptables rules..."
     iptables -D INPUT -p udp --dport "$SLIPSTREAM_PORT" -j ACCEPT 2>/dev/null || true
@@ -1260,9 +1279,120 @@ configure_iptables() {
     save_iptables_rules
 }
 
+# Function to ensure iptables persistence packages are installed
+ensure_iptables_persistence() {
+    print_status "Ensuring iptables persistence packages are installed..."
+
+    case $PKG_MANAGER in
+        dnf|yum)
+            # For RHEL-based systems, install iptables-services if not already installed
+            if ! rpm -q iptables-services &>/dev/null; then
+                print_status "Installing iptables-services package..."
+                if $PKG_MANAGER install -y iptables-services 2>/dev/null; then
+                    print_status "iptables-services installed successfully"
+                else
+                    print_warning "Failed to install iptables-services, will use fallback method"
+                fi
+            fi
+            ;;
+        apt)
+            # For Debian-based systems, install iptables-persistent if not already installed
+            if ! dpkg -l | grep -q "^ii.*iptables-persistent"; then
+                print_status "Installing iptables-persistent package..."
+                # Use debconf-set-selections to avoid interactive prompts
+                echo "iptables-persistent iptables-persistent/autosave_v4 boolean true" | debconf-set-selections 2>/dev/null || true
+                echo "iptables-persistent iptables-persistent/autosave_v6 boolean true" | debconf-set-selections 2>/dev/null || true
+                if apt install -y iptables-persistent 2>/dev/null; then
+                    print_status "iptables-persistent installed successfully"
+                else
+                    print_warning "Failed to install iptables-persistent, will use fallback method"
+                fi
+            fi
+            ;;
+    esac
+}
+
+# Function to create a systemd service to restore iptables rules at boot
+create_iptables_restore_service() {
+    print_status "Creating iptables restore service as fallback..."
+
+    local restore_script="/usr/local/bin/slipstream-restore-iptables.sh"
+    local interface
+    interface=$(ip route | grep default | awk '{print $5}' | head -1)
+    if [[ -z "$interface" ]]; then
+        interface=$(ip link show | grep -E "^[0-9]+: (eth|ens|enp)" | head -1 | cut -d':' -f2 | awk '{print $1}')
+        if [[ -z "$interface" ]]; then
+            interface="eth0"
+        fi
+    fi
+
+    # Create restore script
+    cat > "$restore_script" << 'RESTORE_SCRIPT_EOF'
+#!/bin/bash
+# slipstream-rust iptables rules restore script
+# This script restores iptables rules after reboot
+
+SLIPSTREAM_PORT="5300"
+INTERFACE="__INTERFACE_PLACEHOLDER__"
+
+# Wait for network to be ready
+sleep 2
+
+# Restore IPv4 rules
+if command -v iptables &> /dev/null; then
+    # Check if rules already exist to avoid duplicates
+    if ! iptables -C INPUT -p udp --dport "$SLIPSTREAM_PORT" -j ACCEPT 2>/dev/null; then
+        iptables -I INPUT -p udp --dport "$SLIPSTREAM_PORT" -j ACCEPT
+    fi
+    
+    if ! iptables -t nat -C PREROUTING -i "$INTERFACE" -p udp --dport 53 -j REDIRECT --to-ports "$SLIPSTREAM_PORT" 2>/dev/null; then
+        iptables -t nat -I PREROUTING -i "$INTERFACE" -p udp --dport 53 -j REDIRECT --to-ports "$SLIPSTREAM_PORT"
+    fi
+fi
+
+# Restore IPv6 rules if available
+if command -v ip6tables &> /dev/null && [ -f /proc/net/if_inet6 ]; then
+    if ! ip6tables -C INPUT -p udp --dport "$SLIPSTREAM_PORT" -j ACCEPT 2>/dev/null; then
+        ip6tables -I INPUT -p udp --dport "$SLIPSTREAM_PORT" -j ACCEPT 2>/dev/null || true
+    fi
+    
+    if ! ip6tables -t nat -C PREROUTING -i "$INTERFACE" -p udp --dport 53 -j REDIRECT --to-ports "$SLIPSTREAM_PORT" 2>/dev/null; then
+        ip6tables -t nat -I PREROUTING -i "$INTERFACE" -p udp --dport 53 -j REDIRECT --to-ports "$SLIPSTREAM_PORT" 2>/dev/null || true
+    fi
+fi
+RESTORE_SCRIPT_EOF
+
+    # Replace placeholder with actual interface
+    sed -i "s/__INTERFACE_PLACEHOLDER__/$interface/g" "$restore_script"
+    chmod +x "$restore_script"
+
+    # Create systemd service
+    cat > "${SYSTEMD_DIR}/slipstream-restore-iptables.service" << EOF
+[Unit]
+Description=Restore slipstream-rust iptables rules
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=$restore_script
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    systemctl daemon-reload
+    systemctl enable slipstream-restore-iptables.service 2>/dev/null || print_warning "Could not enable iptables restore service"
+    print_status "Created iptables restore service as fallback"
+}
+
 # Function to save iptables rules with better error handling
 save_iptables_rules() {
     print_status "Saving iptables rules..."
+
+    # Ensure persistence packages are installed
+    ensure_iptables_persistence
 
     case $PKG_MANAGER in
         dnf|yum)
@@ -1288,8 +1418,10 @@ save_iptables_rules() {
                 # Enable and start iptables service if available
                 if systemctl list-unit-files | grep -q iptables.service; then
                     systemctl enable iptables 2>/dev/null || print_warning "Could not enable iptables service"
+                    systemctl start iptables 2>/dev/null || print_warning "Could not start iptables service"
                     if command -v ip6tables &> /dev/null && [ -f /proc/net/if_inet6 ]; then
                         systemctl enable ip6tables 2>/dev/null || print_warning "Could not enable ip6tables service"
+                        systemctl start ip6tables 2>/dev/null || print_warning "Could not start ip6tables service"
                     fi
                 fi
             else
@@ -1319,12 +1451,16 @@ save_iptables_rules() {
                 # Try to enable netfilter-persistent if available
                 if systemctl list-unit-files | grep -q netfilter-persistent.service; then
                     systemctl enable netfilter-persistent 2>/dev/null || print_warning "Could not enable netfilter-persistent service"
+                    systemctl start netfilter-persistent 2>/dev/null || print_warning "Could not start netfilter-persistent service"
                 fi
             else
                 print_warning "iptables-save not available, rules will not persist after reboot"
             fi
             ;;
     esac
+
+    # Create fallback restore service
+    create_iptables_restore_service
 }
 
 # Function to configure firewall
