@@ -42,7 +42,7 @@ jobs:
       - name: Checkout slipstream-rust repository
         uses: actions/checkout@v4
         with:
-          repository: Mygod/slipstream-rust
+          repository: MortezaVaezi2005/slipstream-rust
           ref: main
           submodules: recursive
           path: slipstream-rust
