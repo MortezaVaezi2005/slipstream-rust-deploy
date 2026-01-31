@@ -587,7 +587,6 @@ jobs:
           retention-days: 7
 
   update-version:
-    needs: build
     runs-on: ubuntu-latest
     permissions:
       contents: write
