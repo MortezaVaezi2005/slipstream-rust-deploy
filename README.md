@@ -2,7 +2,7 @@
 
 🚀 **One-click slipstream-rust server deployment and management**
 
-A comprehensive automation script for deploying and managing [slipstream-rust](https://github.com/Mygod/slipstream-rust) DNS tunnel servers on Linux systems. This script handles everything from building from source to configuration, making DNS tunnel deployment effortless.
+A comprehensive automation script for deploying and managing [slipstream-rust](https://github.com/MortezaVaezi2005/slipstream-rust) DNS tunnel servers on Linux systems. This script handles everything from building from source to configuration, making DNS tunnel deployment effortless.
 
 ## DNS Domain Setup
 
@@ -37,7 +37,7 @@ Go into your name registrar's configuration panel and add these records:
 
 **One-command installation:**
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/AliRezaBeigy/slipstream-rust-deploy/master/slipstream-rust-deploy.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/MortezaVaezi2005/slipstream-rust-deploy/master/slipstream-rust-deploy.sh)
 ```
 
 This command will:
@@ -115,17 +115,17 @@ Prebuilt client binaries are available for the following platforms:
 
 | Platform | Download |
 |----------|----------|
-| Linux (x86_64) | [slipstream-client-linux-amd64](https://github.com/AliRezaBeigy/slipstream-rust-deploy/releases/latest/download/slipstream-client-linux-amd64) |
-| Linux (ARM64) | [slipstream-client-linux-arm64](https://github.com/AliRezaBeigy/slipstream-rust-deploy/releases/latest/download/slipstream-client-linux-arm64) |
-| Windows (x86_64) | [slipstream-client-windows-amd64.exe](https://github.com/AliRezaBeigy/slipstream-rust-deploy/releases/latest/download/slipstream-client-windows-amd64.exe) |
-| macOS (ARM64) | [slipstream-client-darwin-arm64](https://github.com/AliRezaBeigy/slipstream-rust-deploy/releases/latest/download/slipstream-client-darwin-arm64) |
-| macOS (Intel) | [slipstream-client-darwin-amd64](https://github.com/AliRezaBeigy/slipstream-rust-deploy/releases/latest/download/slipstream-client-darwin-amd64) |
+| Linux (x86_64) | [slipstream-client-linux-amd64](https://github.com/MortezaVaezi2005/slipstream-rust-deploy/releases/latest/download/slipstream-client-linux-amd64) |
+| Linux (ARM64) | [slipstream-client-linux-arm64](https://github.com/MortezaVaezi2005/slipstream-rust-deploy/releases/latest/download/slipstream-client-linux-arm64) |
+| Windows (x86_64) | [slipstream-client-windows-amd64.exe](https://github.com/MortezaVaezi2005/slipstream-rust-deploy/releases/latest/download/slipstream-client-windows-amd64.exe) |
+| macOS (ARM64) | [slipstream-client-darwin-arm64](https://github.com/MortezaVaezi2005/slipstream-rust-deploy/releases/latest/download/slipstream-client-darwin-arm64) |
+| macOS (Intel) | [slipstream-client-darwin-amd64](https://github.com/MortezaVaezi2005/slipstream-rust-deploy/releases/latest/download/slipstream-client-darwin-amd64) |
 
 ### Quick Start (Linux/macOS)
 
 ```bash
 # Download the client for your platform
-curl -Lo slipstream-client https://github.com/AliRezaBeigy/slipstream-rust-deploy/releases/latest/download/slipstream-client-linux-amd64
+curl -Lo slipstream-client https://github.com/MortezaVaezi2005/slipstream-rust-deploy/releases/latest/download/slipstream-client-linux-amd64
 chmod +x slipstream-client
 
 # Run the client (connects to your server via DNS tunnel)
@@ -136,7 +136,7 @@ chmod +x slipstream-client
 
 ```powershell
 # Download the client
-Invoke-WebRequest -Uri "https://github.com/AliRezaBeigy/slipstream-rust-deploy/releases/latest/download/slipstream-client-windows-amd64.exe" -OutFile "slipstream-client.exe"
+Invoke-WebRequest -Uri "https://github.com/MortezaVaezi2005/slipstream-rust-deploy/releases/latest/download/slipstream-client-windows-amd64.exe" -OutFile "slipstream-client.exe"
 
 # Run the client
 .\slipstream-client.exe --resolver YOUR_SERVER_IP:53 --domain s.example.com
@@ -302,7 +302,7 @@ sudo journalctl -u slipstream-rust-server -f    # View logs
 
 **Uninstall**:
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/AliRezaBeigy/slipstream-rust-deploy/master/slipstream-rust-deploy.sh) uninstall           # Complete removal of slipstream-rust
+bash <(curl -Ls https://raw.githubusercontent.com/MortezaVaezi2005/slipstream-rust-deploy/master/slipstream-rust-deploy.sh) uninstall           # Complete removal of slipstream-rust
 ```
 
 **Dante SOCKS Service (SOCKS mode only)**:
@@ -326,7 +326,7 @@ slipstream-rust-deploy
 
 **Method 2: Re-run the curl command**
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/AliRezaBeigy/slipstream-rust-deploy/master/slipstream-rust-deploy.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/MortezaVaezi2005/slipstream-rust-deploy/master/slipstream-rust-deploy.sh)
 # The script will detect and install updates automatically
 ```
 
@@ -477,7 +477,7 @@ This deployment script is for the **Rust implementation** of slipstream, which d
 - **Prebuilt binaries**: Prebuilt binaries are available for common platforms (Linux x86_64, Linux ARM64, Windows x86_64, macOS ARM64, macOS Intel)
 - **TLS certificates**: Uses TLS certificates (cert.pem/key.pem) instead of public/private keys
 - **Build dependencies**: When building from source, requires Rust toolchain, cmake, pkg-config, and OpenSSL development headers
-- **Repository location**: Uses binaries from or builds from `https://github.com/Mygod/slipstream-rust`
+- **Repository location**: Uses binaries from or builds from `https://github.com/MortezaVaezi2005/slipstream-rust`
 
 ## Contributing
 
@@ -487,7 +487,7 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 
 - [dnstt](https://dnstt.network) by David Fifield
 - [slipstream](https://github.com/EndPositive/slipstream) by Jop Zitman (C implementation)
-- [slipstream-rust](https://github.com/Mygod/slipstream-rust) by Mygod (Rust implementation)
+- [slipstream-rust](https://github.com/MortezaVaezi2005/slipstream-rust) by Mygod (Rust implementation)
 - [dnstt-deploy](https://github.com/bugfloyd/dnstt-deploy) by Yashar Hosseinpour
 - [slipstream-deploy](https://github.com/squirtea/slipstream-deploy) (C implementation deployment script)
 - [Dante SOCKS server](https://www.inet.no/dante/) for SOCKS proxy functionality

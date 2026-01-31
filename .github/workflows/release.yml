@@ -585,3 +585,22 @@ jobs:
           name: slipstream-${{ env.ASSET_NAME }}
           path: build_assets/slipstream-*
           retention-days: 7
+
+  update-version:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Update version file
+        run: |
+          VERSION_HASH=$(date +%s | sha256sum | cut -d' ' -f1)
+          echo "$VERSION_HASH" > .version
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .version
+          git commit -m "Update .version to $VERSION_HASH [skip ci]" || echo "No changes to commit"
+          git push
