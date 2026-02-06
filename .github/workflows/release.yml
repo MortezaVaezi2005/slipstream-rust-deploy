@@ -21,6 +21,9 @@ jobs:
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             asset_name: linux-arm64
+          - os: ubuntu-latest
+            target: aarch64-linux-android
+            asset_name: linux-android-arm64
           - os: macos-latest
             target: aarch64-apple-darwin
             asset_name: darwin-arm64
@@ -42,7 +45,7 @@ jobs:
       - name: Checkout slipstream-rust repository
         uses: actions/checkout@v4
         with:
-          repository: MortezaVaezi2005/slipstream-rust
+          repository: Fox-Fig/slipstream-rust-plus
           ref: main
           submodules: recursive
           path: slipstream-rust
@@ -58,16 +61,20 @@ jobs:
           platforms: linux/arm64,linux/amd64
 
       - name: Install Rust
-        if: runner.os != 'Linux' || matrix.target != 'aarch64-unknown-linux-gnu'
+        if: (runner.os != 'Linux' || matrix.target != 'aarch64-unknown-linux-gnu') && matrix.use_cross != true
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
       - name: Install cross toolchain
-        if: runner.os != 'Linux' || matrix.target != 'aarch64-unknown-linux-gnu'
+        if: (runner.os != 'Linux' || matrix.target != 'aarch64-unknown-linux-gnu') && matrix.use_cross != true
         uses: taiki-e/setup-cross-toolchain-action@v1
         with:
           target: ${{ env.TARGET }}
+
+      - name: Install cross
+        if: matrix.use_cross == true
+        run: cargo install cross --git https://github.com/cross-rs/cross
 
       - name: Get slipstream-rust commit hash
         id: get_commit
@@ -218,6 +225,38 @@ jobs:
           
           # Verify binaries exist
           ls -lh slipstream-rust/target/aarch64-unknown-linux-gnu/release/
+
+      - name: Build with Docker buildx (Android ARM64)
+        if: runner.os == 'Linux' && matrix.target == 'aarch64-linux-android'
+        run: |
+          # Create a temporary directory for the build output
+          mkdir -p docker-build-output
+          
+          mkdir -p slipstream-rust/target/aarch64-linux-android/release
+          
+          # Build the image for linux/arm64 and load it using a pipe
+          docker buildx build \
+            --platform linux/arm64 \
+            --file Dockerfile.android-arm64 \
+            --tag slipstream-build:android-arm64 \
+            --output type=docker,dest=- \
+            . | docker load
+          
+          # Run the container with --platform flag
+          docker run --rm \
+            --platform linux/arm64 \
+            -v "${{ github.workspace }}/slipstream-rust:/workspace/slipstream-rust" \
+            -v "${{ github.workspace }}/docker-build-output:/workspace/output" \
+            slipstream-build:android-arm64
+          
+          # Allow current user to access the files (docker creates them as root)
+          sudo chown -R $(id -u):$(id -g) slipstream-rust/target/ 2>/dev/null || true
+          
+          cp docker-build-output/slipstream-client slipstream-rust/target/aarch64-linux-android/release/
+          cp docker-build-output/slipstream-server slipstream-rust/target/aarch64-linux-android/release/
+          
+          # Verify binaries exist
+          ls -lh slipstream-rust/target/aarch64-linux-android/release/
 
       - name: Build picoquic (Linux)
         if: runner.os == 'Linux' && matrix.target != 'aarch64-unknown-linux-gnu'
@@ -503,6 +542,8 @@ jobs:
 
           if [[ "${{ runner.os }}" == "Windows" ]]; then
             cargo build --release --target ${{ matrix.target }} -p slipstream-client -p slipstream-server --features openssl-vendored
+          elif [[ "${{ matrix.use_cross }}" == "true" ]]; then
+            cross build --release --target ${{ matrix.target }} -p slipstream-client -p slipstream-server
           else
             cargo build --release --target ${{ matrix.target }} -p slipstream-client -p slipstream-server
           fi
@@ -596,10 +637,27 @@ jobs:
 
       - name: Update version file
         run: |
-          VERSION_HASH=$(date +%s | sha256sum | cut -d' ' -f1)
-          echo "$VERSION_HASH" > .version
+          # Read current version or default to 0.00
+          if [ -f .version ]; then
+            CURRENT_VERSION=$(cat .version)
+            # Check if it's a valid number
+            if ! [[ $CURRENT_VERSION =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+              CURRENT_VERSION=0.00
+            fi
+          else
+            CURRENT_VERSION=0.00
+          fi
+          
+          # Increment by 0.01
+          NEW_VERSION=$(awk "BEGIN {print $CURRENT_VERSION + 0.01}")
+          
+          # Format to ensure 2 decimal places (optional but good for consistency)
+          NEW_VERSION=$(printf "%.2f" $NEW_VERSION)
+          
+          echo "$NEW_VERSION" > .version
+          
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add .version
-          git commit -m "Update .version to $VERSION_HASH [skip ci]" || echo "No changes to commit"
+          git commit -m "Update version to $NEW_VERSION [skip ci]" || echo "No changes to commit"
           git push

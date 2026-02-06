@@ -1,0 +1,27 @@
+FROM ghcr.io/cross-rs/aarch64-linux-android:edge
+
+# Install dependencies required for the build script
+# The cross-rs image is based on Ubuntu/Debian, so we can use apt-get
+RUN apt-get update && apt-get install -y \
+    curl \
+    cmake \
+    pkg-config \
+    gcc \
+    g++ \
+    perl \
+    libssl-dev \
+    git \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+
+ENV RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo \
+    PATH=/usr/local/cargo/bin:$PATH
+
+WORKDIR /workspace
+
+COPY build-docker-android.sh /workspace/build-docker-android.sh
+RUN chmod +x /workspace/build-docker-android.sh
+
+CMD ["/workspace/build-docker-android.sh"]
