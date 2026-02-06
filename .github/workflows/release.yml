@@ -51,11 +51,11 @@ jobs:
           path: slipstream-rust
 
       - name: Set up QEMU
-        if: runner.os == 'Linux' && matrix.target == 'aarch64-unknown-linux-gnu'
+        if: runner.os == 'Linux' && (matrix.target == 'aarch64-unknown-linux-gnu' || matrix.target == 'aarch64-linux-android')
         uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
-        if: runner.os == 'Linux' && matrix.target == 'aarch64-unknown-linux-gnu'
+        if: runner.os == 'Linux' && (matrix.target == 'aarch64-unknown-linux-gnu' || matrix.target == 'aarch64-linux-android')
         uses: docker/setup-buildx-action@v3
         with:
           platforms: linux/arm64,linux/amd64
@@ -599,17 +599,17 @@ jobs:
          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
          TAG="${{ steps.get_commit.outputs.short_commit }}"
-         if ! gh release view "$TAG" &>/dev/null; then
-           gh release create "$TAG" \
-             --title "Release $TAG" \
-             --notes "Release for slipstream-rust commit $TAG
-        
+         gh release create "$TAG" \
+           --title "Release $TAG" \
+           --notes "Release for slipstream-rust commit $TAG
+         
          This release contains prebuilt binaries for:
          - Linux (x86_64)
+         - Linux (ARM64)
+         - Android (ARM64)
          - Windows (x86_64)
          - macOS (ARM64)
-         - macOS (Intel x86_64)"
-         fi
+         - macOS (Intel x86_64)" || true
 
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
