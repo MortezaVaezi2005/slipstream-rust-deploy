@@ -104,7 +104,7 @@ The **Plus** version includes experimental "Ultra Turbo" modes. Use these with c
 After setting up the server, you can connect to it using the slipstream-rust client.
 
 > [!NOTE]
-> Ensure you are using a client compatible with **[Slipstream Rust Plus](https://github.com/Fox-Fig/slipstream-rust-plus)**.
+> You must use **Slipstream Rust Plus clients**, which you can download for your operating system from the **Releases** section of this project.
 
 ### Command-Line Client
 For advanced users who prefer command-line tools or need automation, you can use the slipstream-rust client binaries directly.

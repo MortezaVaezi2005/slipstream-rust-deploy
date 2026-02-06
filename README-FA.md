@@ -103,7 +103,7 @@ bash <(curl -Ls https://raw.githubusercontent.com/Fox-Fig/slipstream-rust-deploy
 
 پس از راه‌اندازی سرور، می‌توانید متصل شوید.
 > [!NOTE]
-> حتماً از کلاینت‌های سازگار با **[Slipstream Rust Plus](https://github.com/Fox-Fig/slipstream-rust-plus)** استفاده کنید.
+> شما باید از کلاینت‌های **Slipstream Rust Plus** استفاده کنید که می‌توانید آن‌ها را مطابق با سیستم‌عامل خود از بخش **Releases** همین پروژه دانلود کنید.
 
 ### کلاینت خط فرمان (Command-Line)
 برای کاربران حرفه‌ای:
